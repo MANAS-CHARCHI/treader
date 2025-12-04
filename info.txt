@@ -1,0 +1,11 @@
+    'auth' :- User authentication
+    'subscriptions' :- user subscribtion info
+    'markets' :-  Fetches, processes, and stores market data for both stocks and cryptocurrencies
+    'treading' :- Contains all the core trading simulation logic, including managing user portfolios and trade history
+    'alerts' :-alert-related logic, including user-defined triggers and notifications
+    'notifications' :- sending all types of notifications, including alerts, subscription updates
+    'realtime' :- Server-Sent Events (SSE) for market data streams
+
+
+DOCKER INSTALL DB-
+    docker run -d --name treaderdb -p 5432:5432 -e POSTGRES_DB="TreaderDB" -e POSTGRES_USER="postgres" -e POSTGRES_PASSWORD="Treader@123" timescale/timescaledb-ha:pg17

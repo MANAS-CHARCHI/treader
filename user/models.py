@@ -1,14 +1,34 @@
-from datetime import timedelta, timezone
+from django.utils import timezone
 import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 import string
 import secrets
-# Create your models here.
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.db import transaction, IntegrityError
+from django.contrib.auth.models import BaseUserManager
 
 
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        return self.create_user(email, password, **extra_fields)
 
-class User(models.Model):
+class User(AbstractBaseUser, PermissionsMixin):
     class GenderType(models.TextChoices):
         MALE = 'MALE', _('Male')
         FEMALE = 'FEMALE', _('Female')
@@ -35,6 +55,27 @@ class User(models.Model):
     updated_at= models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=False)
 
+    objects = CustomUserManager()
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='custom_user_groups', # Unique related_name added
+        blank=True,
+        help_text='The groups this user belongs to.',
+        related_query_name='custom_user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='custom_user_permissions', # Unique related_name added
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_query_name='custom_user',
+    )
+
     class Meta:
         db_table = 'User'
         managed = True
@@ -48,7 +89,7 @@ def generate_activation_code():
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 def get_expiration_time():
-    return timezone.now() + timedelta(hours=24)
+    return timezone.now() + timezone.timedelta(hours=24)
 
 class UserActivation(models.Model):
     id=models.AutoField(primary_key=True)
@@ -66,3 +107,17 @@ class UserActivation(models.Model):
     
     def is_expired(self):
         return timezone.now() > self.expires_at
+    
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.activation_code:
+            for _ in range(10):
+                self.activation_code = generate_activation_code()
+                try:
+                    with transaction.atomic():
+                        super().save(*args, **kwargs)
+                    return
+                except IntegrityError:
+                    continue
+            raise Exception("Failed to generate a unique activation code after multiple attempts.")
+    
+        super().save(*args, **kwargs)

@@ -73,6 +73,8 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+# MAdd:- Set custom user model
+AUTH_USER_MODEL = "user.User"
 
 ROOT_URLCONF = 'treader.urls'
 

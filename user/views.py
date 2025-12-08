@@ -9,14 +9,67 @@ from .serializer import UserSerializer
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import check_password
+
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
+from django.conf import settings
   
+
+class GoogleAuthAPIView(APIView):
+    def post(self, request):
+        token = request.data.get("token")
+
+        if not token:
+            return Response({"error": "Token missing"}, status=400)
+
+        try:
+            # Verify the Google token
+            idinfo = id_token.verify_oauth2_token(
+                token,
+                requests.Request(),
+                settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+            )
+
+            email = idinfo.get("email")
+            name = idinfo.get("name")
+            picture = idinfo.get("picture")
+
+            if not email:
+                return Response({"error": "No email from Google"}, status=400)
+
+            # Create / get user
+            user, _ = User.objects.get_or_create(
+                email=email,
+                defaults={"username": email, "first_name": name}
+            )
+
+            # Generate JWT
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "email": user.email,
+                    "name": user.first_name,
+                    "avatar": picture,
+                },
+            })
+
+        except Exception as e:
+            print("GOOGLE ERROR:", e)  # <--- IMPORTANT
+            return Response({"error": "Invalid token"}, status=400)
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            try:
+                serializer.save()
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
             UserActivation.objects.create(
                 user=serializer.instance
             )

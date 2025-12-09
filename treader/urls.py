@@ -9,7 +9,7 @@ def login_error_view(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('auth/', include('social_django.urls', namespace='social')),
+    path('auth/google/', include('social_django.urls', namespace='social')),
     path('login-error/', login_error_view, name='login-error'),
     path('api/user/', include('user.urls')),
     path('api/subscriptions/', include('subscriptions.urls')),

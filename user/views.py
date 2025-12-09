@@ -14,7 +14,6 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 
 from django.conf import settings
-  
 
 class GoogleAuthAPIView(APIView):
     def post(self, request):
@@ -41,7 +40,6 @@ class GoogleAuthAPIView(APIView):
             # Create / get user
             user, _ = User.objects.get_or_create(
                 email=email,
-                defaults={"username": email, "first_name": name}
             )
 
             # Generate JWT
@@ -58,8 +56,8 @@ class GoogleAuthAPIView(APIView):
             })
 
         except Exception as e:
-            print("GOOGLE ERROR:", e)  # <--- IMPORTANT
             return Response({"error": "Invalid token"}, status=400)
+        
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny]
 
@@ -124,15 +122,20 @@ class UserLoginView(APIView):
                     status=status.HTTP_403_FORBIDDEN 
                 )
             refresh = RefreshToken.for_user(user)
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
             login(request, user)
             user.last_login = timezone.now()
             user.save()
 
             return Response(
                 {
-                    "message": f"Login successful for {user.email}.",
-                    "refresh": str(refresh),
                     "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": {
+                        "email": user.email,
+                        "name": user.first_name,
+                        "avatar": user.profile.avatar.url if hasattr(user, 'profile') else None,
+                    },
                 }, 
                 status=status.HTTP_200_OK
             )

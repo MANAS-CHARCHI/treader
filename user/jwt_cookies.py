@@ -1,5 +1,7 @@
+import os
 from rest_framework.response import Response
-
+from dotenv import load_dotenv
+load_dotenv()
 def set_jwt_cookies(
     response: Response,
     refresh=None,
@@ -7,7 +9,7 @@ def set_jwt_cookies(
     *,
     set_access=True,
     set_refresh=True,
-    domain="localhost"
+    domain=os.getenv("DOMAIN_FOR_COOKIES")
 ):
     """
     Flexible cookie helper for:
@@ -37,7 +39,7 @@ def set_jwt_cookies(
             samesite="Lax",
             domain=domain,
             path="/",
-            max_age=60 * 1,  # 5 minutes
+            max_age=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")) * 60,  # in seconds
         )
 
     # -------------------
@@ -52,7 +54,7 @@ def set_jwt_cookies(
             samesite="Lax",
             domain=domain,
             path="/",
-            max_age=60 * 2,  # 2 minutes
+            max_age=int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES")) * 60,  # in seconds
         )
 
     return response

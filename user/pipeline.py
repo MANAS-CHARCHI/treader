@@ -5,6 +5,9 @@ import json
 import urllib
 from rest_framework_simplejwt.tokens import RefreshToken
 from .jwt_cookies import set_jwt_cookies
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def save_user_profile(strategy, details, backend, user=None, response=None, *args, **kwargs):
     if user:
@@ -38,7 +41,7 @@ def generate_tokens_and_redirect(strategy, backend, user=None, details=None, res
 
     # Redirect URL (frontend)
      # Adjust as needed
-    redirect_url = "http://localhost:5173/auth/success/?user=" + urllib.parse.quote(json.dumps(user_data))
+    redirect_url = os.getenv("REDIRECT_AFTER_SOCIAL_AUTH") + urllib.parse.quote(json.dumps(user_data))
 
     # Build Django response object
     response = HttpResponseRedirect(redirect_url)

@@ -1,0 +1,8 @@
+-   Setup JWT in cookies
+-   Logout user
+-   understand the hwo the social auth is working
+-   setup refreh accesstoken from refrehtoken in frontend
+-   make redux frontend
+-   make frontend register, login, profile page
+
+-   make payment gateway

@@ -44,16 +44,34 @@ class GoogleAuthAPIView(APIView):
 
             # Generate JWT
             refresh = RefreshToken.for_user(user)
-
-            return Response({
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": {
-                    "email": user.email,
-                    "name": user.first_name,
-                    "avatar": picture,
+            response = Response({
+                    "user": {
+                        "email": user.email,
+                        "name": user.first_name,
+                        "avatar": picture,
+                    },
                 },
-            })
+                status=status.HTTP_200_OK
+            )
+            response.set_cookie(
+                key="access_token",
+                value=refresh.access_token,
+                httponly=True,
+                secure=False,          # ❗ set False only in local dev
+                samesite="Lax",
+                max_age=60 * 5,       # 5 minutes
+            )
+
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh,
+                httponly=True,
+                secure=False,          # ❗ set False only in local dev
+                samesite="Lax",
+                max_age=60 * 60 * 24 * 7,  # 1 week
+            )
+
+            return response
 
         except Exception as e:
             return Response({"error": "Invalid token"}, status=400)
@@ -126,19 +144,34 @@ class UserLoginView(APIView):
             login(request, user)
             user.last_login = timezone.now()
             user.save()
-
-            return Response(
-                {
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
-                    "user": {
+            response = Response(
+                {"user": {
                         "email": user.email,
                         "name": user.first_name,
                         "avatar": user.profile.avatar.url if hasattr(user, 'profile') else None,
                     },
-                }, 
+                },
                 status=status.HTTP_200_OK
             )
+            response.set_cookie(
+                key="access_token",
+                value=refresh.access_token,
+                httponly=True,
+                secure=False,          # ❗ set False only in local dev
+                samesite="Lax",
+                max_age=60 * 5,       # 5 minutes
+            )
+
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh,
+                httponly=True,
+                secure=False,          # ❗ set False only in local dev
+                samesite="Lax",
+                max_age=60 * 60 * 24 * 7,  # 1 week
+            )
+                
+            return response
         else:
             return Response(
                 {"error": "Invalid email/username or password."}, 

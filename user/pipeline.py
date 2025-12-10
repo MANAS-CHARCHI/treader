@@ -4,10 +4,10 @@ from django.http import HttpResponseRedirect
 import json
 import urllib
 from rest_framework_simplejwt.tokens import RefreshToken
+from .jwt_cookies import set_jwt_cookies
 
 def save_user_profile(strategy, details, backend, user=None, response=None, *args, **kwargs):
     if user:
-        print("Saving user profile...", details)
         user.first_name = details.get('first_name', user.first_name)
         user.last_name = details.get('last_name', user.last_name)
 
@@ -32,48 +32,20 @@ def generate_tokens_and_redirect(strategy, backend, user=None, details=None, res
 
     user_data = {
         "email": user.email,
-        "name": user.first_name,
+        "name": user.first_name+" "+user.last_name,
         "avatar": avatar,
     }
 
     # Redirect URL (frontend)
-    redirect_url = "http://localhost:5173/auth/success"
+     # Adjust as needed
+    redirect_url = "http://localhost:5173/auth/success/?user=" + urllib.parse.quote(json.dumps(user_data))
 
     # Build Django response object
     response = HttpResponseRedirect(redirect_url)
-
-    # -------------------------------
-    # SET SECURE HTTP-ONLY COOKIES
-    # -------------------------------
-
-    # Access token cookie
-    response.set_cookie(
-        "access_token",
-        str(access),
-        httponly=True,
-        secure=False,  # Set to True in production (HTTPS)
-        samesite="Lax",  # Or "None" if using HTTPS with cross-site
-        max_age=3600,  # 1 hour
-    )
-
-    # Refresh token cookie
-    response.set_cookie(
-        "refresh_token",
-        str(refresh),
-        httponly=True,
-        secure=False,
-        samesite="Lax",
-        max_age=7 * 24 * 3600,  # 7 days
-    )
-
-    # Optional: user profile info cookie (NOT httpOnly)
-    response.set_cookie(
-        "user_info",
-        urllib.parse.quote(json.dumps(user_data)),
-        httponly=False,  # readable by frontend
-        secure=False,
-        samesite="Lax",
-        max_age=7 * 24 * 3600,
+    response = set_jwt_cookies(
+        response,
+        refresh,
+        access,
     )
 
     return response

@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,7 +13,7 @@ from django.contrib.auth.hashers import check_password
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
-
+from .jwt_cookies import set_jwt_cookies
 from django.conf import settings
 
 class GoogleAuthAPIView(APIView):
@@ -47,29 +48,13 @@ class GoogleAuthAPIView(APIView):
             response = Response({
                     "user": {
                         "email": user.email,
-                        "name": user.first_name,
+                        "name": user.first_name + " " + user.last_name,
                         "avatar": picture,
                     },
                 },
                 status=status.HTTP_200_OK
             )
-            response.set_cookie(
-                key="access_token",
-                value=refresh.access_token,
-                httponly=True,
-                secure=False,          # ❗ set False only in local dev
-                samesite="Lax",
-                max_age=60 * 5,       # 5 minutes
-            )
-
-            response.set_cookie(
-                key="refresh_token",
-                value=refresh,
-                httponly=True,
-                secure=False,          # ❗ set False only in local dev
-                samesite="Lax",
-                max_age=60 * 60 * 24 * 7,  # 1 week
-            )
+            response = set_jwt_cookies(response, refresh, refresh.access_token)
 
             return response
 
@@ -147,29 +132,13 @@ class UserLoginView(APIView):
             response = Response(
                 {"user": {
                         "email": user.email,
-                        "name": user.first_name,
+                        "name": user.first_name + " " + user.last_name,
                         "avatar": user.profile.avatar.url if hasattr(user, 'profile') else None,
                     },
                 },
                 status=status.HTTP_200_OK
             )
-            response.set_cookie(
-                key="access_token",
-                value=refresh.access_token,
-                httponly=True,
-                secure=False,          # ❗ set False only in local dev
-                samesite="Lax",
-                max_age=60 * 5,       # 5 minutes
-            )
-
-            response.set_cookie(
-                key="refresh_token",
-                value=refresh,
-                httponly=True,
-                secure=False,          # ❗ set False only in local dev
-                samesite="Lax",
-                max_age=60 * 60 * 24 * 7,  # 1 week
-            )
+            response = set_jwt_cookies(response, refresh, refresh.access_token)
                 
             return response
         else:
@@ -177,3 +146,50 @@ class UserLoginView(APIView):
                 {"error": "Invalid email/username or password."}, 
                 status=status.HTTP_401_UNAUTHORIZED
             )
+        
+class LogOutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.COOKIES.get("refresh_token")
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+        except Exception:
+            return Response({"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
+
+        response = Response({"message": "Logged out successfully."}, status=status.HTTP_200_OK)
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
+        return response
+
+class RefreshTokenView(APIView):
+    def post(self, request):
+        refresh_token = request.COOKIES.get("refresh_token")
+
+        if not refresh_token:
+            return Response({"error": "No refresh token"}, status=401)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            new_access = refresh.access_token
+        except Exception:
+            return Response({"error": "Invalid refresh token"}, status=401)
+
+        response = Response({"message": "Token refreshed"}, status=200)
+
+        response = set_jwt_cookies(response, refresh, new_access)
+
+        return response
+    
+class TestValidateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = User.objects.get(email=request.user.email)
+            return Response({'user is valid'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            # No existing user, social pipeline will create a new one
+            return Response({'error': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)

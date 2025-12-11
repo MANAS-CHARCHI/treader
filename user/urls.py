@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.urls import include
-from .views import UserRegistrationView, UserActivationView, UserLoginView, GoogleAuthAPIView, LogOutView, TestValidateView
+from .views import UserRegistrationView, UserActivationView, UserLoginView, GoogleAuthAPIView, LogOutView, TestValidateView, PrintStockDataView
 
 urlpatterns = [
     path('register', UserRegistrationView.as_view(), name='user-register'),
@@ -10,5 +10,5 @@ urlpatterns = [
     path('login', UserLoginView.as_view(), name='user-login'),
     path('logout', LogOutView.as_view(), name='user-logout'),
     path('test-validate', TestValidateView.as_view(), name='test-validate'),
-
+    path('stock-data/<str:symbol>/', PrintStockDataView.as_view(), name='print-stock-data'),
 ]

@@ -32,7 +32,6 @@ class GoogleAuthAPIView(APIView):
             )
 
             email = idinfo.get("email")
-            name = idinfo.get("name")
             picture = idinfo.get("picture")
 
             if not email:
@@ -113,11 +112,18 @@ class UserLoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         user = User.objects.filter(email=login_identifier).first() or User.objects.filter(username=login_identifier).first()
+        if user and not user.login_method == 'email':
+            method = user.login_method.split('-')[0]
+            return Response(
+                {"error": f"Password is not set by you, Please log in using {method or user.login_method}."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if user and not check_password(password, user.password):
             return Response(
                 {"error": "Invalid email/username or password."}, 
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
         if user is not None:
             if not user.is_active:
                 return Response(
@@ -133,7 +139,7 @@ class UserLoginView(APIView):
                 {"user": {
                         "email": user.email,
                         "name": user.first_name + " " + user.last_name,
-                        "avatar": user.profile.avatar.url if hasattr(user, 'profile') else None,
+                        "avatar": user.avatar,
                     },
                 },
                 status=status.HTTP_200_OK
@@ -193,3 +199,36 @@ class TestValidateView(APIView):
         except User.DoesNotExist:
             # No existing user, social pipeline will create a new one
             return Response({'error': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+import requests
+import yfinance as yf
+class PrintStockDataView(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        # Example symbols:
+        # NSE → RELIANCE.NS
+        # BSE → 500325.BO
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.fast_info  # Fast & lightweight data
+
+            data = {
+                "symbol": symbol,
+                "last_price": info.last_price,
+                "open": info.open,
+                "day_high": info.day_high,
+                "day_low": info.day_low,
+                "previous_close": info.previous_close,
+                "volume": info.last_volume,
+                "exchange": info.get("exchange", "NSE/BSE"),
+                "currency": info.currency,
+            }
+
+            return Response(data)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

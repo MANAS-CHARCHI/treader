@@ -54,6 +54,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at= models.DateTimeField(auto_now_add=True)
     updated_at= models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=False)
+    login_method = models.CharField(max_length=50, default='email', 
+                                    choices=[("email", "Email/Password"), ("google", "Google"), ("facebook", "Facebook")],)
 
     objects = CustomUserManager()
     USERNAME_FIELD = 'email'
@@ -121,3 +123,4 @@ class UserActivation(models.Model):
             raise Exception("Failed to generate a unique activation code after multiple attempts.")
     
         super().save(*args, **kwargs)
+    

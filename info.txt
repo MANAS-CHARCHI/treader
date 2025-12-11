@@ -9,3 +9,6 @@
 
 DOCKER INSTALL DB-
     docker run -d --name treaderdb -p 5432:5432 -e POSTGRES_DB="TreaderDB" -e POSTGRES_USER="postgres" -e POSTGRES_PASSWORD="Treader@123" timescale/timescaledb-ha:pg17
+
+import stocks:-
+    python markets/import_stocks.py

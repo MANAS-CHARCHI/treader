@@ -13,8 +13,8 @@ def save_user_profile(strategy, details, backend, user=None, response=None, *arg
     if user:
         user.first_name = details.get('first_name', user.first_name)
         user.last_name = details.get('last_name', user.last_name)
-
         user.avatar = response.get('picture') or details.get('picture')
+        user.login_method = backend.name
         user.is_active = True
         user.save()
     
@@ -37,6 +37,7 @@ def generate_tokens_and_redirect(strategy, backend, user=None, details=None, res
         "email": user.email,
         "name": user.first_name+" "+user.last_name,
         "avatar": avatar,
+        "login_method": user.login_method,
     }
 
     # Redirect URL (frontend)
@@ -63,7 +64,7 @@ def associate_by_email(strategy, details, backend, uid, user=None, *args, **kwar
     normal email/password.
     """
     if user:
-        # User is already authenticated, nothing to do
+        # User is already authenticated
         return {'user': user}
 
     email = details.get('email')

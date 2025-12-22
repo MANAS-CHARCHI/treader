@@ -5,12 +5,12 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-vjjyn*6$-+n_9zl5lkpe_-eur1k$kwz(k3iyhpcyb6g-8n0v6q'
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
 
 
 # Application definition
@@ -87,12 +87,8 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = "http://localhost:5173/auth/success"
-
-SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
-    "prompt": "consent"
-}
 SOCIAL_AUTH_LOGIN_ERROR_URL = "/login-error/"
-SOCIAL_AUTH_RAISE_EXCEPTIONS = True
+SOCIAL_AUTH_RAISE_EXCEPTIONS = False
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv("GOOGLE_CLIENT_ID")
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 print(SOCIAL_AUTH_GOOGLE_OAUTH2_KEY, SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET)
@@ -102,7 +98,6 @@ SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_uid',
     'social_core.pipeline.social_auth.auth_allowed',
     'social_core.pipeline.social_auth.social_user',
-    'user.pipeline.associate_by_email',
     'social_core.pipeline.user.get_username',
     'social_core.pipeline.user.create_user',
     'user.pipeline.save_user_profile',
@@ -185,3 +180,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_BROKER", "redis://localhost:6379/0")
